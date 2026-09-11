@@ -1,66 +1,59 @@
-# Vennie Crime Stats Demo
+# UK Crime Stats
 
-A tiny full-stack demo that lets you enter any UK address + month and instantly
-shows a bar chart of crime categories for that area and period.
+A small full-stack app: enter a UK address and a month, and it shows how many street-level
+crimes of each category the police recorded around that address.
 
-# Project Structure
+I built it in four days in July 2025 as a take-home assignment. The backend is Flask, the
+frontend React with TypeScript.
 
-- /backend — Python Flask API (Google Maps + UK Police API)
-- /frontend — React app with TypeScript, Tailwind CSS, Recharts
-- /venv — Virtual environment (not included in the repo)
+## How a search works
 
-# Backend Setup (Flask + virtualenv)
+While you type, the frontend asks OpenStreetMap Nominatim for matching UK addresses. The
+request waits for a pause in typing and is cancelled when the input changes. The chosen
+address is then turned into a postcode on the client.
 
-Go to the backend folder:
-`cd backend`
+The Flask API checks the postcode format, gets its coordinates from the Google Maps
+Geocoding API and asks [data.police.uk](https://data.police.uk/docs/) for all street-level
+crimes at that point in that month. It returns the number of crimes per category, and the
+frontend draws them with Recharts.
 
-Create a virtual environment:
-`python -m venv venv`
+A postcode that can't be resolved gets a `400`, a failing upstream API a `502`. If the
+police have no data for that month, the page says so instead of drawing an empty chart.
 
-Activate the virtual environment:
+## Stack
 
-- On Windows: `venv\Scripts\activate`
-- On macOS/Linux: `source venv/bin/activate`
+- Backend: Python, Flask, `googlemaps`, `requests`
+- Frontend: React 19, TypeScript, Vite, TanStack Query, React Hook Form with Zod,
+  Tailwind CSS and Recharts, organised by Feature-Sliced Design layers
 
-Install the dependencies:
-`pip install -r requirements.txt`
+A Postman collection for the API is in [`backend/postman`](backend/postman).
 
-Create a `.env` file in the `/backend` folder with the following content:
-GOOGLE_MAPS_API_KEY=your-google-api-key
-POLICE_API_BASE_URL=https://data.police.uk/api
+## Running it locally
 
-Run the Flask development server:
-`python run.py`
+You need Python 3, Node.js with pnpm, and a Google Maps API key with the Geocoding API
+enabled.
 
-Test the API:
-Open http://localhost:8000 in your browser. You should see:
-`{"message": "Welcome to Vennie API"}`
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env            # add your GOOGLE_MAPS_API_KEY
+python run.py                   # http://localhost:8000
+```
 
-# Frontend Setup (React + Vite)
+```bash
+cd frontend
+pnpm install
+cp .env.example .env
+pnpm run dev                    # http://localhost:5173
+```
 
-Go to the frontend folder:
-`cd frontend`
+## What I would do differently
 
-Install dependencies:
-`pnpm install`
+Today I would geocode once, on the server. Resolving the address with Nominatim in the
+browser and again with Google on the server means two services and a regular expression
+that pulls the postcode out of Nominatim's display name.
 
-Create a `.env` file in the `/frontend` folder with the following content:
-VITE_API_BASE_URL=http://localhost:8000/api
-VITE_NOMINATIM_URL=https://nominatim.openstreetmap.org
-
-Run the development server:
-`pnpm run dev`
-
-The app will be available at:  
-`http://localhost:5173`
-
-# Technologies Used
-
-- **Backend**: Python, Flask, Google Maps API, UK Police Data API
-- **Frontend**: React, TypeScript, Tailwind CSS, Vite, Zod, React Hook Form, TanStack Query, Recharts, React Toastify
-
-# Notes
-
-- The backend is a lightweight Flask API that aggregates crime statistics based on geolocation and date.
-- The frontend is a modern single-page React application styled with TailwindCSS.
-- This project was created as part of a technical assignment.
+I would also stop returning raw exception text from the catch-all error handler, and add
+tests. There are none.
